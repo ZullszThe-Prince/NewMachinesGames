@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Emoji Surprise</title>
+<title>Emoji Surprise — Prank Final</title>
 <style>
   /* ====== Base / Normal look (pink - biru - putih gradient, preserved) ====== */
-  :root { --brand: #6c5ce7; --text:#222; }
+  :root { --brand: #ff4e8a; --text:#222; }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
   body{
@@ -16,17 +16,55 @@
     -webkit-font-smoothing:antialiased;
   }
   @keyframes bgMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  
+  /* Matrix effect background */
+  .matrix-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  
   .card{
     background:#fff;border-radius:16px;padding:26px;max-width:720px;width:100%;
     box-shadow:0 14px 40px rgba(0,0,0,.12); text-align:center;
+    position: relative;
   }
   h1{margin:0 0 8px;font-size:clamp(20px,4vw,36px);color:var(--text)}
   p.lead{margin:0 0 18px;color:#555}
   .cta{display:inline-block;padding:12px 26px;border-radius:12px;border:none;background:var(--brand);
-    color:#fff;font-size:17px;cursor:pointer;box-shadow:0 8px 18px rgba(108,59,255,.28)}
+    color:#fff;font-size:17px;cursor:pointer;box-shadow:0 8px 18px rgba(255, 78, 138,.28); 
+    transition: all 0.3s ease;}
+  .cta:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 22px rgba(255, 78, 138,.35);
+  }
   .cta:disabled{opacity:.5;cursor:not-allowed}
-  .emoji-big{font-size:clamp(48px,10vw,96px);margin-top:18px;user-select:none}
+  .emoji-big{font-size:clamp(48px,10vw,96px);margin-top:18px;user-select:none; transition: all 0.3s ease;}
   .small-msg{margin-top:10px;color:#444}
+
+  /* Close button styling */
+  .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--brand);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+  }
 
   /* ===== overlay (GLITCH MODE) - hidden by default ===== */
   #prankOverlay{
@@ -115,13 +153,17 @@
 </head>
 <body>
 
+  <!-- Matrix background canvas -->
+  <canvas class="matrix-bg" id="matrixCanvas"></canvas>
+
   <!-- ========== NORMAL UI (DO NOT CHANGE LOOK) ========== -->
   <main class="card" id="app">
+    <div class="close-btn" id="close-button">X</div>
     <h1>Emoji Surprise 🎉</h1>
-    <p class="lead">clik to start Enoji Gacha</p>
+    <p class="lead">Tekan tombol untuk emoji acak — hati-hati kalau dapat 🎁</p>
 
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;">
-      <button id="gachaBtn" class="cta">Clik here</button>
+      <button id="gachaBtn" class="cta">Pencet ini</button>
     </div>
 
     <div class="emoji-big" id="emojiOutput" aria-live="polite"></div>
@@ -149,14 +191,14 @@
 
     <div id="webcamFake">
       <div class="rec">● REC</div>
-      <div class="label">Webcam Access Detected</div>
+      <div class="label">📷 Webcam Access Detected</div>
       <div class="streamLine" id="streamLine">Streaming to remote server...</div>
     </div>
 
     <div id="restartBox">
       <div class="xBtn" id="xBtn">X</div>
       <div style="font-weight:800">Klik to Restart</div>
-      <div style="font-size:13px;opacity:.9">Clik to stop</div>
+      <div style="font-size:13px;opacity:.9">Tekan tombol untuk menghentikan proses</div>
       <button id="restartBtn">Klik</button>
     </div>
 
@@ -164,13 +206,13 @@
   </section>
 
   <div id="ending">
-    <div><h2>SURPRISEEE ahhahahah</h2></div>
+    <div><h2>Maaf ini cuma bercanda aja kok hehe</h2></div>
   </div>
 
   <!-- ===== audio: static, creepy, countdown voice (hosted samples) ===== -->
-  <audio id="audioStatic" preload="auto" src="https://www.soundjay.com/nature/sounds/wind-01.mp3"></audio>
-  <audio id="audioCreepy" preload="auto" src="https://www.soundjay.com/horror/sounds/horror-01.mp3"></audio>
-  <audio id="audioCountdown" preload="auto" src="https://www.soundjay.com/misc/sounds/countdown-3-2-1-01.mp3"></audio>
+  <audio id="audioStatic" preload="auto"><source src="https://www.soundjay.com/nature/sounds/wind-01.mp3" type="audio/mpeg"></audio>
+  <audio id="audioCreepy" preload="auto"><source src="https://www.soundjay.com/horror/sounds/horror-01.mp3" type="audio/mpeg"></audio>
+  <audio id="audioCountdown" preload="auto"><source src="https://www.soundjay.com/misc/sounds/countdown-3-2-1-01.mp3" type="audio/mpeg"></audio>
 
 <script>
 /* ================== DATA & ELEMENTS ================== */
@@ -179,6 +221,7 @@ const gachaBtn = document.getElementById('gachaBtn');
 const emojiOutput = document.getElementById('emojiOutput');
 const pilihan = document.getElementById('pilihan');
 const app = document.getElementById('app');
+const closeButton = document.getElementById('close-button');
 
 const overlay = document.getElementById('prankOverlay');
 const prankText = document.getElementById('prankText');
@@ -201,6 +244,56 @@ const audioCreepy = document.getElementById('audioCreepy');
 const audioCountdown = document.getElementById('audioCountdown');
 
 let garbleTimer, sliceTimer, creepyTimer, countdownTimer, progressTimer;
+
+/* ========== Matrix Background Effect ========== */
+const canvas = document.getElementById('matrixCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const matrixChars = "01<>[]{}#$%&@*=+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const fontSize = 12;
+const columns = canvas.width / fontSize;
+const drops = [];
+
+for (let i = 0; i < columns; i++) {
+  drops[i] = 1;
+}
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.fillStyle = '#ff4e8a';
+  ctx.font = `${fontSize}px monospace`;
+  
+  for (let i = 0; i < drops.length; i++) {
+    const text = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+    
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    
+    drops[i]++;
+  }
+}
+
+setInterval(drawMatrix, 35);
+
+/* ========== Close Button Behavior ========== */
+closeButton.addEventListener('click', function() {
+  // Pindahkan posisi tombol close secara acak
+  const maxX = window.innerWidth - 50;
+  const maxY = window.innerHeight - 50;
+  const randomX = Math.floor(Math.random() * maxX);
+  const randomY = Math.floor(Math.random() * maxY);
+  
+  this.style.position = 'fixed';
+  this.style.left = randomX + 'px';
+  this.style.top = randomY + 'px';
+});
 
 /* ========== GACHA (keep UI/UX same) ========== */
 gachaBtn.addEventListener('click', onGacha);
@@ -428,6 +521,18 @@ function randomGarble(len){
 
 /* ===== accessibility: allow reloading initial page after test (optional) ===== */
 /* You can refresh page to try again; I keep initial UI hidden after prank so Restart ends with apology. */
+
+// Handle window resize for matrix effect
+window.addEventListener('resize', function() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  // Reinitialize drops array
+  const newColumns = canvas.width / fontSize;
+  drops.length = 0;
+  for (let i = 0; i < newColumns; i++) {
+    drops[i] = 1;
+  }
+});
 
 </script>
 </body>
