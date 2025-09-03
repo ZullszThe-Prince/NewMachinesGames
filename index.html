@@ -1,188 +1,434 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emoji </title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #f0f0f0;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Emoji Surprise</title>
+<style>
+  /* ====== Base / Normal look (pink - biru - putih gradient, preserved) ====== */
+  :root { --brand: #6c5ce7; --text:#222; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{
+    display:flex; align-items:center; justify-content:center; padding:28px;
+    background: linear-gradient(135deg,#ffb6f1,#bfe9ff,#ffffff);
+    background-size:400% 400%; animation: bgMove 12s ease infinite; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  @keyframes bgMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  .card{
+    background:#fff;border-radius:16px;padding:26px;max-width:720px;width:100%;
+    box-shadow:0 14px 40px rgba(0,0,0,.12); text-align:center;
+  }
+  h1{margin:0 0 8px;font-size:clamp(20px,4vw,36px);color:var(--text)}
+  p.lead{margin:0 0 18px;color:#555}
+  .cta{display:inline-block;padding:12px 26px;border-radius:12px;border:none;background:var(--brand);
+    color:#fff;font-size:17px;cursor:pointer;box-shadow:0 8px 18px rgba(108,59,255,.28)}
+  .cta:disabled{opacity:.5;cursor:not-allowed}
+  .emoji-big{font-size:clamp(48px,10vw,96px);margin-top:18px;user-select:none}
+  .small-msg{margin-top:10px;color:#444}
 
-    .container {
-      text-align: center;
-    }
+  /* ===== overlay (GLITCH MODE) - hidden by default ===== */
+  #prankOverlay{
+    position:fixed; inset:0; z-index:9999; display:none; pointer-events:auto;
+    font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
 
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      cursor: pointer;
-    }
+  /* background overlay: dominan hitam + subtle red pulse */
+  #prankBg{position:absolute; inset:0; background:#000; z-index:0}
+  #prankBg::after{
+    content:""; position:absolute; inset:0;
+    background: radial-gradient(900px 300px at 50% 35%, rgba(180,20,20,0.12), transparent 30%);
+    animation: redPulse 2.2s ease-in-out infinite; mix-blend-mode:screen; pointer-events:none;
+  }
+  @keyframes redPulse{0%{opacity:.12}50%{opacity:.28}100%{opacity:.12}}
 
-    #emoji {
-      font-size: 50px;
-      margin-top: 20px;
-    }
+  /* front main scary text (in front) */
+  #prankMain{position:absolute; z-index:60; inset:0; display:grid; place-items:center; pointer-events:none}
+  #prankMain .text{
+    color:#ff5a5a; font-size:clamp(22px,5vw,48px); text-align:center; font-weight:900;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+    white-space:pre-line; letter-spacing:.02em;
+  }
 
-    /* Glitch mode background */
-    .glitch-bg {
-      animation: glitchBackground 0.3s infinite;
-    }
+  /* garble (limited, behind main text) */
+  #garbleLayer{ position:absolute; inset:0; z-index:20; pointer-events:none; overflow:hidden }
+  .garble{
+    position:absolute; color:rgba(255,80,80,0.12); font-size:12px;
+    mix-blend-mode:screen; filter:blur(.2px);
+    will-change: transform, opacity;
+    text-shadow: 0 0 2px rgba(0,0,0,0.6);
+  }
 
-    @keyframes glitchBackground {
-      0% { background: black; }
-      50% { background: #300; } /* merah gelap */
-      100% { background: black; }
-    }
+  /* slices (scanlines) */
+  .slice{ position:absolute; left:-10%; width:120%; height:2px; background:linear-gradient(90deg,transparent,rgba(255,0,0,.5),transparent);
+    opacity:.12; z-index:30; pointer-events:none; animation: sliceMove linear infinite; }
+  @keyframes sliceMove{ from{transform:translateX(-10%)} to{transform:translateX(10%)} }
 
-    /* Teks utama */
-    #main-text {
-      position: absolute;
-      top: 40%;
-      width: 100%;
-      text-align: center;
-      font-size: 28px;
-      color: red;
-      white-space: pre-wrap;
-    }
+  /* fake popup (security alert) */
+  .fakePopup{
+    position:absolute; top:8%; left:50%; transform:translateX(-50%); z-index:55;
+    background:#111; color:#fff; padding:12px 16px; border-radius:8px; border:2px solid #6b0000;
+    box-shadow:0 10px 30px rgba(0,0,0,.6); width:min(620px,92%); text-align:left; font-size:14px;
+  }
+  .popup-row{display:flex;gap:8px;align-items:center}
+  .progress{ height:12px; background:#222; border-radius:8px; overflow:hidden; margin-top:8px }
+  .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,#ff4444,#ff9444); transition:width .35s linear }
 
-    /* Teks acak glitch */
-    .random-text {
-      position: absolute;
-      color: #ff000033;
-      font-size: 14px;
-      animation: flicker 0.2s infinite alternate;
-    }
+  .countdown{ font-weight:800; color:#ff7b7b; margin-left:auto }
 
-    @keyframes flicker {
-      from { opacity: 0.2; }
-      to { opacity: 1; }
-    }
+  .cameraFake{ margin-top:8px; color:#f3a; font-size:13px; opacity:.95; display:none }
 
-    /* Kotak restart */
-    #restart-box {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.7);
-      padding: 20px;
-      border: 2px solid red;
-      color: white;
-      display: none;
-    }
+  /* restart trap box small transparent */
+  #restartBox{
+    position:absolute; z-index:70; width:240px; min-height:72px; padding:12px; left:50%; top:66%;
+    transform:translate(-50%,-50%); background:rgba(0,0,0,0.45); border:1px solid rgba(255,80,80,0.4);
+    color:#fff; border-radius:10px; display:none; box-shadow:0 10px 30px rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  }
+  #restartBox .xBtn{ position:absolute; right:8px; top:6px; cursor:pointer; font-size:14px; color:#ff8b8b; }
+  #restartBox button{ margin-top:10px; padding:8px 14px; border-radius:8px; border:none; background:#ff6b6b; color:#111; font-weight:700; cursor:pointer; }
 
-    #restart-box button {
-      margin-top: 10px;
-      padding: 5px 15px;
-      cursor: pointer;
-    }
+  /* fake webcam overlay */
+  #webcamFake{
+    position:absolute; z-index:65; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:320px; height:220px; border:3px solid #8b0000; border-radius:8px; background:#0b0b0b; display:none;
+    box-shadow:0 10px 50px rgba(139,0,0,0.6);
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+  }
+  #webcamFake .rec { position:absolute; left:12px; top:8px; color:#ff4b4b; font-weight:900 }
+  #webcamFake .label { color:#eee; font-weight:700; margin-top:12px }
+  #webcamFake .streamLine { color:#ff7070; margin-top:12px; display:none; font-size:12px }
 
-    #close-btn {
-      position: absolute;
-      top: 2px;
-      right: 5px;
-      cursor: pointer;
-      font-size: 14px;
-      color: red;
-    }
+  /* creepy flash emoji */
+  .creepy{ position:absolute; z-index:62; font-size:46px; opacity:0.9; pointer-events:none; transform:translate(-50%,-50%); }
 
-    /* Ending */
-    #ending {
-      display: none;
-      font-size: 24px;
-      text-align: center;
-      color: black;
-    }
-  </style>
+  /* ending white */
+  #ending{ position:fixed; inset:0; z-index:99999; display:none; background:#fff; color:#111; display:grid; place-items:center; padding:28px; text-align:center; font-size:20px; }
+
+  /* shake whole overlay occasionally */
+  .shake{ animation: shakeScreen .6s ease-in-out }
+  @keyframes shakeScreen{
+    0%{transform:translateY(0)}20%{transform:translateY(-6px)}40%{transform:translateY(4px)}60%{transform:translateY(-3px)}80%{transform:translateY(2px)}100%{transform:translateY(0)}
+  }
+
+</style>
 </head>
 <body>
-  <div class="container" id="main">
-    <h1>Emoji Gacha</h1>
-    <button onclick="gacha()">Klik To Gacha</button>
-    <div id="emoji"></div>
-  </div>
 
-  <div id="main-text"></div>
-  <div id="restart-box">
-    <div id="close-btn" onclick="moveBox()">X</div>
-    <p>Klik to Restart</p>
-    <button onclick="restart()">Klik</button>
-  </div>
+  <!-- ========== NORMAL UI (DO NOT CHANGE LOOK) ========== -->
+  <main class="card" id="app">
+    <h1>Emoji Surprise 🎉</h1>
+    <p class="lead">clik to start Enoji Gacha</p>
+
+    <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;">
+      <button id="gachaBtn" class="cta">Clik here</button>
+    </div>
+
+    <div class="emoji-big" id="emojiOutput" aria-live="polite"></div>
+    <div class="small-msg" id="pilihan"></div>
+  </main>
+
+  <!-- ========== PRANK OVERLAY (hidden initially) ========== -->
+  <section id="prankOverlay" aria-hidden="true" role="dialog" aria-label="prank overlay">
+    <div id="prankBg"></div>
+
+    <div id="garbleLayer"></div>
+    <div id="slicesLayer"></div>
+
+    <div class="fakePopup" id="fakePopup" style="display:none">
+      <div style="display:flex;align-items:center">
+        <strong>⚠️ SECURITY ALERT</strong>
+        <div class="countdown" id="countdown">10</div>
+      </div>
+      <div style="margin-top:6px;color:#f3a">Unauthorized activity detected. Initiating extraction...</div>
+      <div class="progress"><i id="progressBar"></i></div>
+      <div class="cameraFake" id="cameraFake">[ACCESSING CAMERA...]</div>
+    </div>
+
+    <div id="prankMain"><div class="text" id="prankText"></div></div>
+
+    <div id="webcamFake">
+      <div class="rec">● REC</div>
+      <div class="label">Webcam Access Detected</div>
+      <div class="streamLine" id="streamLine">Streaming to remote server...</div>
+    </div>
+
+    <div id="restartBox">
+      <div class="xBtn" id="xBtn">X</div>
+      <div style="font-weight:800">Klik to Restart</div>
+      <div style="font-size:13px;opacity:.9">Clik to stop</div>
+      <button id="restartBtn">Klik</button>
+    </div>
+
+    <div id="creepyHolder"></div>
+  </section>
 
   <div id="ending">
-    <h1>Maaf ini cuma bercanda aja kok hehe</h1>
+    <div><h2>SURPRISEEE ahhahahah</h2></div>
   </div>
 
-  <script>
-    const emojis = ["😀","😎","🦋","🔥","👻","💀","👽","🎁"];
-    let glitchInterval;
+  <!-- ===== audio: static, creepy, countdown voice (hosted samples) ===== -->
+  <audio id="audioStatic" preload="auto" src="https://www.soundjay.com/nature/sounds/wind-01.mp3"></audio>
+  <audio id="audioCreepy" preload="auto" src="https://www.soundjay.com/horror/sounds/horror-01.mp3"></audio>
+  <audio id="audioCountdown" preload="auto" src="https://www.soundjay.com/misc/sounds/countdown-3-2-1-01.mp3"></audio>
 
-    function gacha() {
-      const result = emojis[Math.floor(Math.random() * emojis.length)];
-      document.getElementById("emoji").innerText = result;
+<script>
+/* ================== DATA & ELEMENTS ================== */
+const EMOJIS = ["💖","🌸","🎉","😎","✨","🐱","🔥","🎁","🍀","🦋"]; // kept order: includes 🎁
+const gachaBtn = document.getElementById('gachaBtn');
+const emojiOutput = document.getElementById('emojiOutput');
+const pilihan = document.getElementById('pilihan');
+const app = document.getElementById('app');
 
-      if (result === "🎁") {
-        setTimeout(startGlitch, 1000);
-      }
+const overlay = document.getElementById('prankOverlay');
+const prankText = document.getElementById('prankText');
+const garbleLayer = document.getElementById('garbleLayer');
+const slicesLayer = document.getElementById('slicesLayer');
+const fakePopup = document.getElementById('fakePopup');
+const progressBar = document.getElementById('progressBar');
+const countdownEl = document.getElementById('countdown');
+const cameraFake = document.getElementById('cameraFake');
+const restartBox = document.getElementById('restartBox');
+const restartBtn = document.getElementById('restartBtn');
+const xBtn = document.getElementById('xBtn');
+const webcamFake = document.getElementById('webcamFake');
+const streamLine = document.getElementById('streamLine');
+const creepyHolder = document.getElementById('creepyHolder');
+const ending = document.getElementById('ending');
+
+const audioStatic = document.getElementById('audioStatic');
+const audioCreepy = document.getElementById('audioCreepy');
+const audioCountdown = document.getElementById('audioCountdown');
+
+let garbleTimer, sliceTimer, creepyTimer, countdownTimer, progressTimer;
+
+/* ========== GACHA (keep UI/UX same) ========== */
+gachaBtn.addEventListener('click', onGacha);
+
+function onGacha(){
+  // pick random emoji
+  const pick = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+  emojiOutput.textContent = pick;
+  pilihan.textContent = pick === "🎁" ? "Hadiah spesial... sedang dibuka" : "Ini emoji biasa untukmu";
+  // disable to prevent spam (optional)
+  gachaBtn.disabled = true;
+
+  if(pick === "🎁"){
+    // small open animation then start prank
+    setTimeout(async ()=>{
+      await animateBoxOpen();
+      startPrankMode();
+    }, 700);
+  } else {
+    // re-enable after short delay so user can try again
+    setTimeout(()=> gachaBtn.disabled = false, 900);
+  }
+}
+
+function animateBoxOpen(){
+  return new Promise(res=>{
+    emojiOutput.style.transform = "scale(1.15)";
+    setTimeout(()=>{ emojiOutput.style.transform = "scale(1)"; res(); }, 300);
+  });
+}
+
+/* ========== PRANK MODE START ========== */
+function startPrankMode(){
+  // remove (hide) normal UI
+  app.style.display = 'none';
+
+  // show overlay and background
+  overlay.style.display = 'block';
+  overlay.setAttribute('aria-hidden','false');
+
+  // start static audio (may be blocked by browser until user interacts - ignore error)
+  try{ audioStatic.currentTime = 0; audioStatic.volume = 0.2; audioStatic.play().catch(()=>{}); }catch(e){}
+
+  // set main scary text (replace "system breach" -> strong scary phrase)
+  const scaryPhrases = [
+    "SYSTEM COMPROMISED — DATA EXFILTRATION IN PROGRESS",
+    "ROOT ACCESS ACQUIRED — SECURE FILES BEING EXFILTRATED",
+    "ALERT: UNAUTHORIZED REMOTE CONTROL OBTAINED"
+  ];
+  const mainPhrase = scaryPhrases[Math.floor(Math.random()*scaryPhrases.length)];
+  typeWriter(prankText, mainPhrase, 0);
+
+  // spawn few garble texts (reduced amount)
+  garbleTimer = setInterval(spawnGarble, 350);
+
+  // spawn slices occasionally
+  sliceTimer = setInterval(()=> spawnSlice(), 240);
+
+  // show fake popup and start fake progress + countdown
+  setTimeout(()=> {
+    fakePopup.style.display = 'block';
+    startFakeProgressAndCountdown(12); // 12s fake operation
+    // after small delay show camera access text in popup
+    setTimeout(()=> cameraFake.style.display = 'block', 600);
+  }, 900);
+
+  // fake webcam after short delay (with creepy sound)
+  setTimeout(()=> {
+    showFakeWebcam();
+  }, 2000);
+
+  // occasional creepy emojis
+  creepyTimer = setInterval(()=> spawnCreepyEmoji(), 1800);
+
+  // finally show restart trap box after everything starts
+  setTimeout(()=> {
+    restartBox.style.display = 'block';
+    // center initial
+    restartBox.style.left = '50%'; restartBox.style.top = '66%'; restartBox.style.transform = 'translate(-50%,-50%)';
+  }, 7000);
+}
+
+/* ===== typewriter main ===== */
+function typeWriter(node, text, i){
+  node.textContent = "";
+  (function step(k){
+    if(k <= text.length){
+      node.textContent = text.slice(0,k);
+      setTimeout(()=>step(k+1), 50 + Math.random()*40);
     }
+  })(0);
+}
 
-    function startGlitch() {
-      document.body.classList.add("glitch-bg");
-      document.getElementById("main").style.display = "none";
-      typeWriter("ACCESSING DATA...\nHACKING SYSTEM...\nDELETING FILES...", 0);
+/* ===== garble (few) ===== */
+function spawnGarble(){
+  const max = 8;
+  if(garbleLayer.children.length > max) return;
+  const d = document.createElement('div');
+  d.className = 'garble';
+  d.textContent = randomGarble(18);
+  d.style.left = (5 + Math.random()*85) + 'vw';
+  d.style.top  = (5 + Math.random()*85) + 'vh';
+  d.style.opacity = (0.08 + Math.random()*0.24).toString();
+  d.style.transform = `rotate(${(-8 + Math.random()*16).toFixed(1)}deg)`;
+  garbleLayer.appendChild(d);
+  setTimeout(()=> { try{ d.remove(); }catch(e){} }, 3000 + Math.random()*2200);
+}
 
-      // spawn teks acak
-      glitchInterval = setInterval(spawnRandomText, 200);
-      
-      // setelah 6 detik munculin restart box
-      setTimeout(() => {
-        document.getElementById("restart-box").style.display = "block";
-      }, 6000);
+/* ===== slices ===== */
+function spawnSlice(){
+  const s = document.createElement('div');
+  s.className = 'slice';
+  s.style.top = Math.random()*98 + '%';
+  s.style.animationDuration = (0.8 + Math.random()*1.6) + 's';
+  s.style.opacity = 0.06 + Math.random()*0.18;
+  slicesLayer.appendChild(s);
+  setTimeout(()=> s.remove(), 1100 + Math.random()*900);
+}
+
+/* ===== fake popup progress & countdown (visual & audio) ===== */
+function startFakeProgressAndCountdown(totalSeconds){
+  let seconds = totalSeconds;
+  countdownEl.textContent = seconds;
+  progressBar.style.width = '0%';
+  // animate progress slowly and play countdown sound at the end
+  progressTimer = setInterval(()=>{
+    // increase progress smoothly but not linear
+    let cur = parseFloat(progressBar.style.width) || 0;
+    cur += 4 + Math.random()*9;
+    if(cur >= 99) cur = 99;
+    progressBar.style.width = cur + '%';
+    // update visual countdown every second via separate timer (below)
+  }, 600);
+
+  // countdown display and ticking
+  countdownTimer = setInterval(()=>{
+    seconds--;
+    countdownEl.textContent = seconds > 0 ? seconds : 0;
+    if(seconds <= 0){
+      clearInterval(countdownTimer);
+      clearInterval(progressTimer);
+      progressBar.style.width = '100%';
+      // when countdown ends, play a dramatic audio clip (countdown sound)
+      try{ audioCountdown.currentTime = 0; audioCountdown.volume = 0.9; audioCountdown.play().catch(()=>{}); }catch(e){}
+      // escalate a bit: flash and add more garble
+      flashScreenBrief();
     }
+  }, 1000);
+}
 
-    function typeWriter(text, i) {
-      if (i < text.length) {
-        document.getElementById("main-text").innerText += text.charAt(i);
-        setTimeout(() => typeWriter(text, i + 1), 80);
-      }
-    }
+/* small flash */
+function flashScreenBrief(){
+  const b = document.getElementById('prankBg');
+  b.style.transition = 'background .08s';
+  b.style.background = '#220000';
+  setTimeout(()=>{ b.style.background = '#000'; }, 180);
+}
 
-    function spawnRandomText() {
-      const el = document.createElement("div");
-      el.className = "random-text";
-      el.style.top = Math.random() * window.innerHeight + "px";
-      el.style.left = Math.random() * window.innerWidth + "px";
-      el.innerText = "### ERROR ###";
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
-    }
+/* ===== fake webcam overlay (REC + streaming + creepy audio) ===== */
+function showFakeWebcam(){
+  webcamFake.style.display = 'flex';
+  // play creepy sound
+  try{ audioCreepy.currentTime = 0; audioCreepy.volume = 0.6; audioCreepy.play().catch(()=>{}); }catch(e){}
+  setTimeout(()=> {
+    streamLine.style.display = 'block';
+  }, 2500);
+}
 
-    function moveBox() {
-      const box = document.getElementById("restart-box");
-      box.style.top = Math.random() * 80 + "%";
-      box.style.left = Math.random() * 80 + "%";
-      box.style.transform = "translate(0,0)";
-    }
+/* ===== creepy emoji flashes ===== */
+function spawnCreepyEmoji(){
+  const pool = ["👁️","☠️","👽","🩸"];
+  const el = document.createElement('div');
+  el.className = 'creepy';
+  el.textContent = pool[Math.floor(Math.random()*pool.length)];
+  el.style.left = (20 + Math.random()*60) + '%';
+  el.style.top  = (20 + Math.random()*60) + '%';
+  el.style.fontSize = (30 + Math.random()*60) + 'px';
+  creepyHolder.appendChild(el);
+  setTimeout(()=> el.remove(), 900 + Math.random()*700);
+}
 
-    function restart() {
-      clearInterval(glitchInterval);
-      document.body.classList.remove("glitch-bg");
-      document.getElementById("main-text").innerText = "";
-      document.querySelectorAll(".random-text").forEach(e => e.remove());
-      document.getElementById("restart-box").style.display = "none";
-      document.body.style.background = "white";
-      document.getElementById("ending").style.display = "block";
-    }
-  </script>
+/* ===== restart box X behavior & restart ===== */
+xBtn.addEventListener('click', moveRestartBox);
+function moveRestartBox(){
+  // move to a new random position inside viewport, but keep visible
+  const left = Math.random() * 74 + 8; // percent
+  const top  = Math.random() * 60 + 20;
+  restartBox.style.left = left + '%';
+  restartBox.style.top  = top + '%';
+  restartBox.style.transform = 'translate(-50%,-50%)';
+}
+
+restartBtn.addEventListener('click', doRestart);
+function doRestart(){
+  // stop all timers & audio
+  [garbleTimer, sliceTimer, creepyTimer, countdownTimer, progressTimer].forEach(t => { if(t) clearInterval(t); });
+  try{ audioStatic.pause(); audioStatic.currentTime = 0; }catch(e){}
+  try{ audioCreepy.pause(); audioCreepy.currentTime = 0; }catch(e){}
+  try{ audioCountdown.pause(); audioCountdown.currentTime = 0; }catch(e){}
+
+  // cleanup nodes
+  garbleLayer.innerHTML = '';
+  slicesLayer.innerHTML = '';
+  creepyHolder.innerHTML = '';
+  fakePopup.style.display = 'none';
+  webcamFake.style.display = 'none';
+  restartBox.style.display = 'none';
+  prankText.textContent = '';
+
+  // show ending white apology
+  overlay.style.display = 'none';
+  ending.style.display = 'grid';
+  document.body.style.background = '#fff';
+  // ensure final message visible
+  app.style.display = 'none';
+}
+
+/* ===== utils ===== */
+function randomGarble(len){
+  const pool = "01<>[]{}#$%&@*=+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let out = "";
+  for(let i=0;i<len;i++) out += pool[Math.floor(Math.random()*pool.length)];
+  return out;
+}
+
+/* ===== accessibility: allow reloading initial page after test (optional) ===== */
+/* You can refresh page to try again; I keep initial UI hidden after prank so Restart ends with apology. */
+
+</script>
 </body>
 </html>
-
